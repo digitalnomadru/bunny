@@ -79,7 +79,7 @@ class Channel
     protected $bodyBuffer;
 
     /** @var int */
-    protected $state = ChannelStateEnum::READY;
+    public $state = ChannelStateEnum::READY;
 
     /** @var int */
     protected $mode = ChannelModeEnum::REGULAR;
