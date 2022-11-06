@@ -16,7 +16,6 @@
         "react-php",
         "reactphp"
     ],
-    "minimum-stability": "dev",
     "license": "MIT",
     "authors": [
         {
