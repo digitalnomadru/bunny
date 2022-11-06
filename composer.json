@@ -17,6 +17,7 @@
         "reactphp"
     ],
     "license": "MIT",
+    "minimum-stability": "dev",
     "authors": [
         {
             "name": "Jakub Kulhan",
