@@ -1,6 +1,5 @@
 {
     "name": "cambocoin/bunny",
-    "type": "library",
     "description": "Performant pure-PHP AMQP (RabbitMQ) sync/async (ReactPHP) library",
     "keywords": [
         "rabbitmq",
@@ -17,7 +16,6 @@
         "reactphp"
     ],
     "license": "MIT",
-    "minimum-stability": "dev",
     "authors": [
         {
             "name": "Jakub Kulhan",
