@@ -118,6 +118,15 @@ $channel = $bunny->channel();
 $channel->queueDeclare('queue_name'); // Queue name
 ```
 
+#### Publishing a message on a virtual host with quorum queues as a default
+
+From RabbitMQ 4 queues will be standard defined as Quorum queues, those are by default durable, in order to connect to them you should use the queue declare method as follows. In the current version of RabbitMQ 3.11.15 this is already supported, if the virtual host is configured to have a default type of Quorum.
+
+```php
+$channel = $bunny->channel();
+$channel->queueDeclare('queue_name', false, true); // Queue name
+```
+
 With a communication channel set up, we can now publish a message to the queue:
 
 ```php
@@ -211,18 +220,14 @@ There is [amqp interop](https://github.com/queue-interop/amqp-interop) compatibl
 
 ## Testing
 
-You need access to a RabbitMQ instance to run the test suite. You can either connect to an existing instance or use the
-provided Docker Compose setup to create an isolated environment, including a RabbitMQ container, to run the test suite
-in.
+Create client/server SSL certificates by running:
 
-**Local RabbitMQ**
+```
+$ cd test/ssl && make all && cd -
+```
 
-- Change `TEST_RABBITMQ_CONNECTION_URI` in `phpunit.xml` to fit your environment. Then run:
+You need access to a RabbitMQ instance in order to run the test suite. The easiest way is to use the provided Docker Compose setup to create an isolated environment, including a RabbitMQ container, to run the test suite in.
 
-  ```
-  $ vendor/bin/phpunit
-  ```
-  
 **Docker Compose**
 
 - Use Docker Compose to create a network with a RabbitMQ container and a PHP container to run the tests in. The project
