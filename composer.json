@@ -1,5 +1,5 @@
 {
-    "name": "cambocoin/bunny",
+    "name": "web3promax/bunny",
     "description": "Performant pure-PHP AMQP (RabbitMQ) sync/async (ReactPHP) library",
     "keywords": [
         "rabbitmq",
@@ -15,15 +15,15 @@
         "react-php",
         "reactphp"
     ],
-    "license": "MIT",
-    "authors": [
+    "repositories": [
         {
-            "name": "Jakub Kulhan",
-            "email": "jakub.kulhan@gmail.com"
+            "type": "git",
+            "url": "https://github.com/web3promax/laminas-log.git"
         }
     ],
     "require": {
         "php": "^8.2",
+        "laminas/laminas-log": "dev-master",
         "react/event-loop": "^1.0 || ^0.5 || ^0.4",
         "react/promise": "~2.2"
     },
@@ -38,6 +38,7 @@
     },
     "autoload": {
         "psr-4": {
+            "Amqp\\": "src/Amqp/",
             "Bunny\\": "src/Bunny/"
         }
     },
