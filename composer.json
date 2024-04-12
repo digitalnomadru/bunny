@@ -1,5 +1,5 @@
 {
-    "name": "web3promax/bunny",
+    "name": "bunny/bunny",
     "description": "Performant pure-PHP AMQP (RabbitMQ) sync/async (ReactPHP) library",
     "keywords": [
         "rabbitmq",
