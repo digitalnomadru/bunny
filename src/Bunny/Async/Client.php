@@ -254,7 +254,7 @@ class Client extends AbstractClient
         }
         else{
             foreach($this->channels as $channel){
-                $this->removeChannel($channel->getChannelId());
+                $this->removeChannel($channel->id);
             }
         }
 

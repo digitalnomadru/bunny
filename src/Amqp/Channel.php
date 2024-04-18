@@ -81,7 +81,7 @@ class Channel
 
         try {
             $self->bunny = $self->client->channel();
-            $self->id = $self->bunny->getChannelId();
+            $self->id = $self->bunny->id;
         }
         catch (ClientException $e) {
             if (strpos($e->getMessage(), 'Connection refused')) {

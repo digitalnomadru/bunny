@@ -29,7 +29,7 @@ $data = implode(' ', array_slice($argv, 1));
     });
 })->then(function (Channel $channel) use ($data) {
     echo " [x] Sent '{$data}'\n";
-    $client = $channel->getClient();
+    $client = $channel->client;
     return $channel->close()->then(function () use ($client) {
         return $client;
     });

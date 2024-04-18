@@ -21,7 +21,7 @@ $loop = Factory::create();
     });
 })->then(function (Channel $channel) {
     echo " [x] Sent 'Hello World!'\n";
-    $client = $channel->getClient();
+    $client = $channel->client;
     return $channel->close()->then(function () use ($client) {
         return $client;
     });

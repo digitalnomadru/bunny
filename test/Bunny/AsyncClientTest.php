@@ -91,7 +91,7 @@ class AsyncClientTest extends TestCase
         $client->connect()->then(function (Client $client) {
             return $client->channel();
         })->then(function (Channel $ch) {
-            return $ch->getClient()->disconnect();
+            return $ch->client->disconnect();
         })->then(function () use ($loop) {
             $loop->stop();
         })->done();
@@ -122,11 +122,11 @@ class AsyncClientTest extends TestCase
             for ($i = 0, $l = count($chs); $i < $l; ++$i) {
                 $this->assertInstanceOf(Channel::class, $chs[$i]);
                 for ($j = 0; $j < $i; ++$j) {
-                    $this->assertNotEquals($chs[$i]->getChannelId(), $chs[$j]->getChannelId());
+                    $this->assertNotEquals($chs[$i]->id, $chs[$j]->id);
                 }
             }
 
-            return $chs[0]->getClient()->disconnect();
+            return $chs[0]->client->disconnect();
 
         })->then(function () use ($loop) {
             $loop->stop();
@@ -264,7 +264,7 @@ class AsyncClientTest extends TestCase
 
             $channel->ack($message3);
 
-            return $channel->getClient()->disconnect();
+            return $channel->client->disconnect();
 
         })->then(function () use ($loop) {
             $loop->stop();
@@ -342,7 +342,7 @@ class AsyncClientTest extends TestCase
                 return $ch;
             });
         })->then(function (Channel $ch) {
-            return $ch->getClient()->disconnect();
+            return $ch->client->disconnect();
         })->then(function () use ($loop) {
             $loop->stop();
         })->done();

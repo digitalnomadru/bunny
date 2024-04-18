@@ -80,10 +80,10 @@ class ClientTest extends TestCase
         $client->connect();
         $this->assertInstanceOf(Channel::class, $ch1 = $client->channel());
         $this->assertInstanceOf(Channel::class, $ch2 = $client->channel());
-        $this->assertNotEquals($ch1->getChannelId(), $ch2->getChannelId());
+        $this->assertNotEquals($ch1->id, $ch2->id);
         $this->assertInstanceOf(Channel::class, $ch3 = $client->channel());
-        $this->assertNotEquals($ch1->getChannelId(), $ch3->getChannelId());
-        $this->assertNotEquals($ch2->getChannelId(), $ch3->getChannelId());
+        $this->assertNotEquals($ch1->id, $ch3->id);
+        $this->assertNotEquals($ch2->id, $ch3->id);
 
         $this->assertTrue($client->isConnected());
         $this->helper->disconnectClientWithEventLoop($client);

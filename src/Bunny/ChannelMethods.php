@@ -13,20 +13,8 @@ use React\Promise;
  */
 trait ChannelMethods
 {
-
-    /**
-     * Returns underlying client instance.
-     * 
-     * @return AbstractClient
-     */
-    abstract public function getClient();
-
-    /**
-     * Returns channel id.
-     * 
-     * @return int
-     */
-    abstract public function getChannelId();
+    public int $id;
+    public ?AbstractClient $client;
 
     /**
      * Calls exchange.declare AMQP method.
@@ -44,7 +32,7 @@ trait ChannelMethods
      */
     public function exchangeDeclare($exchange, $exchangeType = 'direct', $passive = false, $durable = false, $autoDelete = false, $internal = false, $nowait = false, $arguments = [])
     {
-        return $this->getClient()->exchangeDeclare($this->getChannelId(), $exchange, $exchangeType, $passive, $durable, $autoDelete, $internal, $nowait, $arguments);
+        return $this->client->exchangeDeclare($this->id, $exchange, $exchangeType, $passive, $durable, $autoDelete, $internal, $nowait, $arguments);
     }
 
     /**
@@ -58,7 +46,7 @@ trait ChannelMethods
      */
     public function exchangeDelete($exchange, $ifUnused = false, $nowait = false)
     {
-        return $this->getClient()->exchangeDelete($this->getChannelId(), $exchange, $ifUnused, $nowait);
+        return $this->client->exchangeDelete($this->id, $exchange, $ifUnused, $nowait);
     }
 
     /**
@@ -74,7 +62,7 @@ trait ChannelMethods
      */
     public function exchangeBind($destination, $source, $routingKey = '', $nowait = false, $arguments = [])
     {
-        return $this->getClient()->exchangeBind($this->getChannelId(), $destination, $source, $routingKey, $nowait, $arguments);
+        return $this->client->exchangeBind($this->id, $destination, $source, $routingKey, $nowait, $arguments);
     }
 
     /**
@@ -90,7 +78,7 @@ trait ChannelMethods
      */
     public function exchangeUnbind($destination, $source, $routingKey = '', $nowait = false, $arguments = [])
     {
-        return $this->getClient()->exchangeUnbind($this->getChannelId(), $destination, $source, $routingKey, $nowait, $arguments);
+        return $this->client->exchangeUnbind($this->id, $destination, $source, $routingKey, $nowait, $arguments);
     }
 
     /**
@@ -108,7 +96,7 @@ trait ChannelMethods
      */
     public function queueDeclare($queue = '', $passive = false, $durable = false, $exclusive = false, $autoDelete = false, $nowait = false, $arguments = [])
     {
-        return $this->getClient()->queueDeclare($this->getChannelId(), $queue, $passive, $durable, $exclusive, $autoDelete, $nowait, $arguments);
+        return $this->client->queueDeclare($this->id, $queue, $passive, $durable, $exclusive, $autoDelete, $nowait, $arguments);
     }
 
     /**
@@ -124,7 +112,7 @@ trait ChannelMethods
      */
     public function queueBind($queue, $exchange, $routingKey = '', $nowait = false, $arguments = [])
     {
-        return $this->getClient()->queueBind($this->getChannelId(), $queue, $exchange, $routingKey, $nowait, $arguments);
+        return $this->client->queueBind($this->id, $queue, $exchange, $routingKey, $nowait, $arguments);
     }
 
     /**
@@ -137,7 +125,7 @@ trait ChannelMethods
      */
     public function queuePurge($queue = '', $nowait = false)
     {
-        return $this->getClient()->queuePurge($this->getChannelId(), $queue, $nowait);
+        return $this->client->queuePurge($this->id, $queue, $nowait);
     }
 
     /**
@@ -152,7 +140,7 @@ trait ChannelMethods
      */
     public function queueDelete($queue = '', $ifUnused = false, $ifEmpty = false, $nowait = false)
     {
-        return $this->getClient()->queueDelete($this->getChannelId(), $queue, $ifUnused, $ifEmpty, $nowait);
+        return $this->client->queueDelete($this->id, $queue, $ifUnused, $ifEmpty, $nowait);
     }
 
     /**
@@ -167,7 +155,7 @@ trait ChannelMethods
      */
     public function queueUnbind($queue, $exchange, $routingKey = '', $arguments = [])
     {
-        return $this->getClient()->queueUnbind($this->getChannelId(), $queue, $exchange, $routingKey, $arguments);
+        return $this->client->queueUnbind($this->id, $queue, $exchange, $routingKey, $arguments);
     }
 
     /**
@@ -181,7 +169,7 @@ trait ChannelMethods
      */
     public function qos($prefetchSize = 0, $prefetchCount = 0, $global = false)
     {
-        return $this->getClient()->qos($this->getChannelId(), $prefetchSize, $prefetchCount, $global);
+        return $this->client->qos($this->id, $prefetchSize, $prefetchCount, $global);
     }
 
     /**
@@ -199,7 +187,7 @@ trait ChannelMethods
      */
     public function consume($queue = '', $consumerTag = '', $noLocal = false, $noAck = false, $exclusive = false, $nowait = false, $arguments = [])
     {
-        return $this->getClient()->consume($this->getChannelId(), $queue, $consumerTag, $noLocal, $noAck, $exclusive, $nowait, $arguments);
+        return $this->client->consume($this->id, $queue, $consumerTag, $noLocal, $noAck, $exclusive, $nowait, $arguments);
     }
 
     /**
@@ -212,7 +200,7 @@ trait ChannelMethods
      */
     public function cancel($consumerTag, $nowait = false)
     {
-        return $this->getClient()->cancel($this->getChannelId(), $consumerTag, $nowait);
+        return $this->client->cancel($this->id, $consumerTag, $nowait);
     }
 
     /**
@@ -229,7 +217,7 @@ trait ChannelMethods
      */
     public function publish($body, array $headers = [], $exchange = '', $routingKey = '', $mandatory = false, $immediate = false)
     {
-        return $this->getClient()->publish($this->getChannelId(), $body, $headers, $exchange, $routingKey, $mandatory, $immediate);
+        return $this->client->publish($this->id, $body, $headers, $exchange, $routingKey, $mandatory, $immediate);
     }
 
     /**
@@ -242,7 +230,7 @@ trait ChannelMethods
      */
     public function get($queue = '', $noAck = false)
     {
-        return $this->getClient()->get($this->getChannelId(), $queue, $noAck);
+        return $this->client->get($this->id, $queue, $noAck);
     }
 
     /**
@@ -255,7 +243,7 @@ trait ChannelMethods
      */
     public function ack($deliveryTag = 0, $multiple = false)
     {
-        return $this->getClient()->ack($this->getChannelId(), $deliveryTag, $multiple);
+        return $this->client->ack($this->id, $deliveryTag, $multiple);
     }
 
     /**
@@ -268,7 +256,7 @@ trait ChannelMethods
      */
     public function reject($deliveryTag, $requeue = true)
     {
-        return $this->getClient()->reject($this->getChannelId(), $deliveryTag, $requeue);
+        return $this->client->reject($this->id, $deliveryTag, $requeue);
     }
 
     /**
@@ -280,7 +268,7 @@ trait ChannelMethods
      */
     public function recoverAsync($requeue = false)
     {
-        return $this->getClient()->recoverAsync($this->getChannelId(), $requeue);
+        return $this->client->recoverAsync($this->id, $requeue);
     }
 
     /**
@@ -292,7 +280,7 @@ trait ChannelMethods
      */
     public function recover($requeue = false)
     {
-        return $this->getClient()->recover($this->getChannelId(), $requeue);
+        return $this->client->recover($this->id, $requeue);
     }
 
     /**
@@ -306,7 +294,7 @@ trait ChannelMethods
      */
     public function nack($deliveryTag = 0, $multiple = false, $requeue = true)
     {
-        return $this->getClient()->nack($this->getChannelId(), $deliveryTag, $multiple, $requeue);
+        return $this->client->nack($this->id, $deliveryTag, $multiple, $requeue);
     }
 
     /**
@@ -317,7 +305,7 @@ trait ChannelMethods
      */
     public function txSelect()
     {
-        return $this->getClient()->txSelect($this->getChannelId());
+        return $this->client->txSelect($this->id);
     }
 
     /**
@@ -328,7 +316,7 @@ trait ChannelMethods
      */
     public function txCommit()
     {
-        return $this->getClient()->txCommit($this->getChannelId());
+        return $this->client->txCommit($this->id);
     }
 
     /**
@@ -339,7 +327,7 @@ trait ChannelMethods
      */
     public function txRollback()
     {
-        return $this->getClient()->txRollback($this->getChannelId());
+        return $this->client->txRollback($this->id);
     }
 
     /**
@@ -351,7 +339,7 @@ trait ChannelMethods
      */
     public function confirmSelect($nowait = false)
     {
-        return $this->getClient()->confirmSelect($this->getChannelId(), $nowait);
+        return $this->client->confirmSelect($this->id, $nowait);
     }
 
 }

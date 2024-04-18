@@ -27,7 +27,7 @@ if (empty($data)) {
     });
 })->then(function (Channel $channel) use ($data, $routing_key) {
     echo " [x] Sent ", $routing_key, ':', $data, " \n";
-    $client = $channel->getClient();
+    $client = $channel->client;
     return $channel->close()->then(function () use ($client) {
         return $client;
     });

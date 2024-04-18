@@ -23,6 +23,8 @@ class ChannelTest extends TestCase
         $this->helper = new SynchronousClientHelper();
     }
 
+
+
     public function testClose()
     {
         $c = $this->helper->createClient();
@@ -73,7 +75,7 @@ class ChannelTest extends TestCase
         $ch->exchangeDeclare("test_exchange", "direct", false, false, true);
         $ch->queueDeclare("test_queue", false, false, false, true);
         $ch->queueBind("test_queue", "test_exchange");
-        $ch->getClient()->disconnect();
+        $ch->client->disconnect();
 
         $this->assertTrue($c->isConnected());
         $this->helper->disconnectClientWithEventLoop($c);
@@ -86,7 +88,7 @@ class ChannelTest extends TestCase
 
         $ch = $c->connect()->channel();
         $ch->publish("test publish", []);
-        $ch->getClient()->disconnect();
+        $ch->client->disconnect();
 
         $this->assertTrue($c->isConnected());
         $this->helper->disconnectClientWithEventLoop($c);

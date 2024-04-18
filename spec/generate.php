@@ -483,7 +483,7 @@ foreach ($spec->classes as $class) {
         $clientAppendBitExpressions = [];
         $clientArguments = [];
         $clientSetters = [];
-        $channelClientArguments = ["\$this->getChannelId()"];
+        $channelClientArguments = ["\$this->id"];
         $channelArguments = [];
         $channelDocComment = "";
         $hasNowait = false;
@@ -911,7 +911,7 @@ foreach ($spec->classes as $class) {
             $channelMethodsContent .= "     */\n";
             $channelMethodsContent .= "    public function " . lcfirst($methodName) . "(" . implode(", ", $channelArguments) . ")\n";
             $channelMethodsContent .= "    {\n";
-            $channelMethodsContent .= "        return \$this->getClient()->" . lcfirst($methodName) . "(" . implode(", ", $channelClientArguments) . ");\n";
+            $channelMethodsContent .= "        return \$this->client->" . lcfirst($methodName) . "(" . implode(", ", $channelClientArguments) . ");\n";
             $channelMethodsContent .= "    }\n\n";
         }
     }

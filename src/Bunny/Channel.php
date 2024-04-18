@@ -42,7 +42,6 @@ define('MQ_NOLOCAL',  512);
  */
 class Channel
 {
-
     use ChannelMethods {
         ChannelMethods::consume as private consumeImpl;
         ChannelMethods::ack as private ackImpl;
@@ -57,107 +56,51 @@ class Channel
         ChannelMethods::confirmSelect as private confirmSelectImpl;
     }
 
-    /** @var AbstractClient */
-    protected $client;
+    public int $deliveryTag;
 
-    /** @var int */
-    protected $channelId;
+    public int $state = ChannelStateEnum::READY;
 
-    /** @var callable[] */
-    protected $returnCallbacks = [];
+    public int $mode = ChannelModeEnum::REGULAR;
 
     /** @var callable[] */
-    protected $deliverCallbacks = [];
+    protected array $returnCallbacks = [];
 
     /** @var callable[] */
-    protected $ackCallbacks = [];
+    protected array $deliverCallbacks = [];
 
-    /** @var MethodBasicReturnFrame */
-    protected $returnFrame;
+    /** @var callable[] */
+    protected array $ackCallbacks = [];
 
-    /** @var MethodBasicDeliverFrame */
-    protected $deliverFrame;
+    protected ?MethodBasicReturnFrame $returnFrame = null;
 
-    /** @var MethodBasicGetOkFrame */
-    protected $getOkFrame;
+    protected ?MethodBasicDeliverFrame $deliverFrame = null;
 
-    /** @var ContentHeaderFrame */
-    protected $headerFrame;
+    protected ?MethodBasicGetOkFrame $getOkFrame = null;
 
-    /** @var int */
-    protected $bodySizeRemaining;
+    protected ?ContentHeaderFrame $headerFrame = null;
 
-    /** @var Buffer */
-    protected $bodyBuffer;
+    protected int $bodySizeRemaining;
 
-    /** @var int */
-    public $state = ChannelStateEnum::READY;
+    protected Buffer $bodyBuffer;
 
-    /** @var int */
-    protected $mode = ChannelModeEnum::REGULAR;
+    protected ?Deferred $closeDeferred = null;
 
-    /** @var Deferred */
-    protected $closeDeferred;
+    protected ?PromiseInterface $closePromise = null;
 
-    /** @var PromiseInterface */
-    protected $closePromise;
+    protected ?Deferred $getDeferred = null;
 
-    /** @var Deferred */
-    protected $getDeferred;
-
-    /** @var int */
-    protected $deliveryTag;
-
-    /**
-     * Constructor.
-     *
-     * @param AbstractClient $client
-     * @param int $channelId
-     */
-    public function __construct(AbstractClient $client, $channelId)
+    public function __construct(AbstractClient $client, int $channelId)
     {
         $this->client = $client;
-        $this->channelId = $channelId;
+        $this->id = $channelId;
         $this->bodyBuffer = new Buffer();
-    }
-
-    /**
-     * Returns underlying client instance.
-     *
-     * @return AbstractClient
-     */
-    public function getClient()
-    {
-        return $this->client;
-    }
-
-    /**
-     * Returns channel id.
-     *
-     * @return int
-     */
-    public function getChannelId()
-    {
-        return $this->channelId;
-    }
-
-    /**
-     * Returns the channel mode.
-     *
-     * @return int
-     */
-    public function getMode()
-    {
-        return $this->mode;
     }
 
     /**
      * Listener is called whenever 'basic.return' frame is received with arguments (Message $returnedMessage, MethodBasicReturnFrame $frame)
      *
-     * @param callable $callback
-     * @return $this
      */
-    public function addReturnListener(callable $callback)
+    public function addReturnListener(callable $callback): static
     {
         $this->removeReturnListener($callback); // remove if previously added to prevent calling multiple times
         $this->returnCallbacks[] = $callback;
@@ -167,10 +110,8 @@ class Channel
     /**
      * Removes registered return listener. If the callback is not registered, this is noop.
      *
-     * @param callable $callback
-     * @return $this
      */
-    public function removeReturnListener(callable $callback)
+    public function removeReturnListener(callable $callback): static
     {
         foreach ($this->returnCallbacks as $k => $v) {
             if ($v === $callback) {
@@ -184,10 +125,8 @@ class Channel
     /**
      * Listener is called whenever 'basic.ack' or 'basic.nack' is received.
      *
-     * @param callable $callback
-     * @return $this
      */
-    public function addAckListener(callable $callback)
+    public function addAckListener(callable $callback): static
     {
         if ($this->mode !== ChannelModeEnum::CONFIRM) {
             throw new ChannelException("Ack/nack listener can be added when channel in confirm mode.");
@@ -201,10 +140,8 @@ class Channel
     /**
      * Removes registered ack/nack listener. If the callback is not registered, this is noop.
      *
-     * @param callable $callback
-     * @return $this
      */
-    public function removeAckListener(callable $callback)
+    public function removeAckListener(callable $callback): static
     {
         if ($this->mode !== ChannelModeEnum::CONFIRM) {
             throw new ChannelException("Ack/nack listener can be removed when channel in confirm mode.");
@@ -224,14 +161,11 @@ class Channel
      *
      * Always returns a promise, because there can be outstanding messages to be processed.
      *
-     * @param int $replyCode
-     * @param string $replyText
-     * @return PromiseInterface
      */
-    public function close($replyCode = 0, $replyText = "")
+    public function close(int $replyCode = 0, string $replyText = ""): PromiseInterface
     {
         if ($this->state === ChannelStateEnum::CLOSED) {
-            throw new ChannelException("Trying to close already closed channel #{$this->channelId}.");
+            throw new ChannelException("Trying to close already closed channel #$this->id.");
         }
 
         if ($this->state === ChannelStateEnum::CLOSING) {
@@ -240,27 +174,27 @@ class Channel
 
         $this->state = ChannelStateEnum::CLOSING;
 
-        $this->client->channelClose($this->channelId, $replyCode, $replyText, 0, 0);
+        $this->client->channelClose($this->id, $replyCode, $replyText, 0, 0);
         $this->closeDeferred = new Deferred();
         return $this->closePromise = $this->closeDeferred->promise()->then(function () {
-            $this->client->removeChannel($this->channelId);
+            $this->client->removeChannel($this->id);
         });
     }
 
     /**
      * Creates new consumer on channel.
      *
-     * @param callable $callback
-     * @param string $queue
-     * @param string $consumerTag
-     * @param bool $noLocal
-     * @param bool $noAck
-     * @param bool $exclusive
-     * @param bool $nowait
-     * @param array $arguments
-     * @return MethodBasicConsumeOkFrame|PromiseInterface
      */
-    public function consume(callable $callback, $queue = "", $consumerTag = "", $noLocal = false, $noAck = false, $exclusive = false, $nowait = false, $arguments = [])
+    public function consume(
+        callable $callback,
+        string $queue = "",
+        string $consumerTag = "",
+        bool $noLocal = false,
+        bool $noAck = false,
+        bool $exclusive = false,
+        bool $nowait = false,
+        array $arguments = []
+    ): MethodBasicConsumeOkFrame|PromiseInterface
     {
         $response = $this->consumeImpl($queue, $consumerTag, $noLocal, $noAck, $exclusive, $nowait, $arguments);
 
@@ -286,16 +220,17 @@ class Channel
     /**
      * Convenience method that registers consumer and then starts client event loop.
      *
-     * @param callable $callback
-     * @param string $queue
-     * @param string $consumerTag
-     * @param bool $noLocal
-     * @param bool $noAck
-     * @param bool $exclusive
-     * @param bool $nowait
-     * @param array $arguments
      */
-    public function run(callable $callback, $queue = "", $consumerTag = "", $noLocal = false, $noAck = false, $exclusive = false, $nowait = false, $arguments = [])
+    public function run(
+        callable $callback,
+        string $queue = "",
+        string $consumerTag = "",
+        bool $noLocal = false,
+        bool $noAck = false,
+        bool $exclusive = false,
+        bool $nowait = false,
+        array $arguments = []
+    ): void
     {
         $response = $this->consume($callback, $queue, $consumerTag, $noLocal, $noAck, $exclusive, $nowait, $arguments);
 
@@ -319,11 +254,8 @@ class Channel
     /**
      * Acks given message.
      *
-     * @param Message $message
-     * @param boolean $multiple
-     * @return boolean|PromiseInterface
      */
-    public function ack(Message $message, $multiple = false)
+    public function ack(Message $message, $multiple = false): PromiseInterface|bool
     {
         return $this->ackImpl($message->deliveryTag, $multiple);
     }
@@ -331,12 +263,8 @@ class Channel
     /**
      * Nacks given message.
      *
-     * @param Message $message
-     * @param boolean $multiple
-     * @param boolean $requeue
-     * @return boolean|PromiseInterface
      */
-    public function nack(Message $message, $multiple = false, $requeue = true)
+    public function nack(Message $message, bool $multiple = false, bool $requeue = true): PromiseInterface|bool
     {
         return $this->nackImpl($message->deliveryTag, $multiple, $requeue);
     }
@@ -344,11 +272,8 @@ class Channel
     /**
      * Rejects given message.
      *
-     * @param Message $message
-     * @param bool $requeue
-     * @return boolean|PromiseInterface
      */
-    public function reject(Message $message, $requeue = true)
+    public function reject(Message $message, bool $requeue = true): PromiseInterface|bool
     {
         return $this->rejectImpl($message->deliveryTag, $requeue);
     }
@@ -356,11 +281,8 @@ class Channel
     /**
      * Synchronously returns message if there is any waiting in the queue.
      *
-     * @param string $queue
-     * @param bool $noAck
-     * @return Message|PromiseInterface|null
      */
-    public function get($queue = "", $noAck = false)
+    public function get(string $queue = "", bool $noAck = false): PromiseInterface|Message|null
     {
         if ($this->getDeferred !== null) {
             throw new ChannelException("Another 'basic.get' already in progress. You should use 'basic.consume' instead of multiple 'basic.get'.");
@@ -395,13 +317,13 @@ class Channel
         } elseif ($response instanceof MethodBasicGetOkFrame) {
             $this->state = ChannelStateEnum::AWAITING_HEADER;
 
-            $headerFrame = $this->getClient()->awaitContentHeader($this->getChannelId());
+            $headerFrame = $this->client->awaitContentHeader($this->id);
             $this->headerFrame = $headerFrame;
             $this->bodySizeRemaining = $headerFrame->bodySize;
             $this->state = ChannelStateEnum::AWAITING_BODY;
 
             while ($this->bodySizeRemaining > 0) {
-                $bodyFrame = $this->getClient()->awaitContentBody($this->getChannelId());
+                $bodyFrame = $this->client->awaitContentBody($this->id);
 
                 $this->bodyBuffer->append($bodyFrame->payload);
                 $this->bodySizeRemaining -= $bodyFrame->payloadSize;
@@ -443,9 +365,8 @@ class Channel
      * @param string $routingKey
      * @param bool $mandatory
      * @param bool $immediate
-     * @return bool|PromiseInterface|int
      */
-    public function publish($body, array $headers = [], $exchange = '', $routingKey = '', $mandatory = false, $immediate = false)
+    public function publish($body, array $headers = [], $exchange = '', $routingKey = '', $mandatory = false, $immediate = false): PromiseInterface|bool|int
     {
         $response = $this->publishImpl($body, $headers, $exchange, $routingKey, $mandatory, $immediate);
 
@@ -467,9 +388,8 @@ class Channel
      *
      * @param string $consumerTag
      * @param bool $nowait
-     * @return bool|Protocol\MethodBasicCancelOkFrame|PromiseInterface
      */
-    public function cancel($consumerTag, $nowait = false)
+    public function cancel($consumerTag, $nowait = false): Protocol\MethodBasicCancelOkFrame|PromiseInterface|bool
     {
         $response = $this->cancelImpl($consumerTag, $nowait);
         unset($this->deliverCallbacks[$consumerTag]);
@@ -479,9 +399,8 @@ class Channel
     /**
      * Changes channel to transactional mode. All messages are published to queues only after {@link txCommit()} is called.
      *
-     * @return Protocol\MethodTxSelectOkFrame|PromiseInterface
      */
-    public function txSelect()
+    public function txSelect(): PromiseInterface|Protocol\MethodTxSelectOkFrame
     {
         if ($this->mode !== ChannelModeEnum::REGULAR) {
             throw new ChannelException("Channel not in regular mode, cannot change to transactional mode.");
@@ -504,9 +423,8 @@ class Channel
     /**
      * Commit transaction.
      *
-     * @return Protocol\MethodTxCommitOkFrame|PromiseInterface
      */
-    public function txCommit()
+    public function txCommit(): Protocol\MethodTxCommitOkFrame|PromiseInterface
     {
         if ($this->mode !== ChannelModeEnum::TRANSACTIONAL) {
             throw new ChannelException("Channel not in transactional mode, cannot call 'tx.commit'.");
@@ -518,9 +436,8 @@ class Channel
     /**
      * Rollback transaction.
      *
-     * @return Protocol\MethodTxRollbackOkFrame|PromiseInterface
      */
-    public function txRollback()
+    public function txRollback(): PromiseInterface|Protocol\MethodTxRollbackOkFrame
     {
         if ($this->mode !== ChannelModeEnum::TRANSACTIONAL) {
             throw new ChannelException("Channel not in transactional mode, cannot call 'tx.rollback'.");
@@ -532,10 +449,8 @@ class Channel
     /**
      * Changes channel to confirm mode. Broker then asynchronously sends 'basic.ack's for published messages.
      *
-     * @param bool $nowait
-     * @return Protocol\MethodConfirmSelectOkFrame|PromiseInterface
      */
-    public function confirmSelect(callable $callback = null, $nowait = false)
+    public function confirmSelect(callable $callback = null, bool $nowait = false): PromiseInterface|Protocol\MethodConfirmSelectOkFrame
     {
         if ($this->mode !== ChannelModeEnum::REGULAR) {
             throw new ChannelException("Channel not in regular mode, cannot change to transactional mode.");
@@ -555,7 +470,7 @@ class Channel
         }
     }
 
-    private function enterConfirmMode(callable $callback = null)
+    private function enterConfirmMode(callable $callback = null): void
     {
         $this->mode = ChannelModeEnum::CONFIRM;
         $this->deliveryTag = 0;
@@ -568,16 +483,15 @@ class Channel
     /**
      * Callback after channel-level frame has been received.
      *
-     * @param AbstractFrame $frame
      */
-    public function onFrameReceived(AbstractFrame $frame)
+    public function onFrameReceived(AbstractFrame $frame): void
     {
         if ($this->state === ChannelStateEnum::ERROR) {
             throw new ChannelException("Channel in error state.");
         }
 
         if ($this->state === ChannelStateEnum::CLOSED) {
-            throw new ChannelException("Received frame #{$frame->type} on closed channel #{$this->channelId}.");
+            throw new ChannelException("Received frame #$frame->type on closed channel #$this->id.");
         }
 
         if ($frame instanceof MethodFrame) {
@@ -606,7 +520,7 @@ class Channel
                 $this->state = ChannelStateEnum::CLOSED;
 
                 if ($this->closeDeferred !== null) {
-                    $this->closeDeferred->resolve($this->channelId);
+                    $this->closeDeferred->resolve($this->id);
                 }
 
                 // break reference cycle, must be called after resolving promise
@@ -716,7 +630,7 @@ class Channel
     /**
      * Callback after content body has been completely received.
      */
-    protected function onBodyComplete()
+    protected function onBodyComplete(): void
     {
         if ($this->returnFrame) {
             $content = $this->bodyBuffer->consume($this->bodyBuffer->getLength());
@@ -782,4 +696,3 @@ class Channel
         }
     }
 }
-
