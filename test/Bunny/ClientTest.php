@@ -117,9 +117,9 @@ class ClientTest extends TestCase
                 $client->stop();
             });
         });
-        $channel->publish(".", [], "", "disconnect_test");
-        $channel->publish(".", [], "", "disconnect_test");
-        $channel->publish(".", [], "", "disconnect_test");
+        $channel->publish(".", "", "disconnect_test");
+        $channel->publish(".", "", "disconnect_test");
+        $channel->publish(".", "", "disconnect_test");
 
         $client->run(5);
 
@@ -169,7 +169,7 @@ class ClientTest extends TestCase
         $channel = $client->channel();
 
         $channel->queueDeclare("get_test");
-        $channel->publish(".", [], "", "get_test");
+        $channel->publish(".", "", "get_test");
 
         $message1 = $channel->get("get_test", true);
         $this->assertNotNull($message1);
@@ -180,7 +180,7 @@ class ClientTest extends TestCase
         $message2 = $channel->get("get_test", true);
         $this->assertNull($message2);
 
-        $channel->publish("..", [], "", "get_test");
+        $channel->publish("..", "", "get_test");
 
         $channel->get("get_test");
         $client->disconnect()->then(function () use ($client) {
@@ -229,7 +229,7 @@ class ClientTest extends TestCase
             $client->stop();
         });
 
-        $channel->publish("xxx", [], "", "404", true);
+        $channel->publish("xxx", "", "404", true);
 
         $client->run(1);
 
@@ -253,14 +253,14 @@ class ClientTest extends TestCase
         $channel->queueDeclare("tx_test");
 
         $channel->txSelect();
-        $channel->publish(".", [], "", "tx_test");
+        $channel->publish(".", "", "tx_test");
         $channel->txCommit();
 
         $message = $channel->get("tx_test", true);
         $this->assertNotNull($message);
         $this->assertEquals(".", $message->content);
 
-        $channel->publish("..", [], "", "tx_test");
+        $channel->publish("..", "", "tx_test");
         $channel->txRollback();
 
         $nothing = $channel->get("tx_test", true);
@@ -316,7 +316,7 @@ class ClientTest extends TestCase
 
         $channel->queueDeclare("empty_body_message_test");
 
-        $channel->publish("", [], "", "empty_body_message_test");
+        $channel->publish("", "", "empty_body_message_test");
         $message = $channel->get("empty_body_message_test", true);
         $this->assertNotNull($message);
         $this->assertEquals("", $message->content);
@@ -335,8 +335,8 @@ class ClientTest extends TestCase
             "empty_body_message_test"
         );
 
-        $channel->publish("", [], "", "empty_body_message_test");
-        $channel->publish("", [], "", "empty_body_message_test");
+        $channel->publish("", "", "empty_body_message_test");
+        $channel->publish("", "", "empty_body_message_test");
 
         $client->run(1);
 

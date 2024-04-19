@@ -407,19 +407,30 @@ class Channel
         }
     }
 
-    /**
-     * Published message to given exchange.
-     *
-     * @param string $body
-     * @param array $headers
-     * @param string $exchange
-     * @param string $routingKey
-     * @param bool $mandatory
-     * @param bool $immediate
-     */
-    public function publish($body, array $headers = [], $exchange = '', $routingKey = '', $mandatory = false, $immediate = false): bool|int
+    public function publish(
+        string|Message $message,
+        string         $exchange    = '',
+        string         $rkey        = '',
+        bool           $mandatory   = false,
+        bool           $immediate   = false
+    ): bool|int
     {
-        $response = $this->client->publish($this->id, $body, $headers, $exchange, $routingKey, $mandatory, $immediate);
+        if (is_string($message)) {
+            $message = new Message($message, [], $exchange, $rkey);
+        }
+
+        if ($exchange)  $message->exchange = $exchange;
+        if ($rkey)      $message->routingKey = $rkey;
+
+        $response = $this->client->publish(
+            $this->id,
+            $message->content,
+            $message->headers,
+            $message->exchange,
+            $message->routingKey,
+            $mandatory,
+            $immediate
+        );
 
         if ($this->mode === ChannelModeEnum::CONFIRM) {
             return ++$this->deliveryTag;

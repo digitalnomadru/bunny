@@ -87,7 +87,7 @@ class ChannelTest extends TestCase
         $c = $this->helper->createClient();
 
         $ch = $c->connect()->channel();
-        $ch->publish("test publish", []);
+        $ch->publish("test publish");
         $ch->client->disconnect();
 
         $this->assertTrue($c->isConnected());
@@ -105,7 +105,7 @@ class ChannelTest extends TestCase
             $this->assertEquals("hi", $msg->content);
             $c->stop();
         });
-        $ch->publish("hi", [], "", "test_queue");
+        $ch->publish("hi", "", "test_queue");
         $c->run();
         $c->disconnect();
 
@@ -120,7 +120,7 @@ class ChannelTest extends TestCase
 
         $ch = $c->connect()->channel();
         $ch->queueDeclare("test_queue", MQ_AUTODELETE);
-        $ch->publish("hi again", [], "", "test_queue");
+        $ch->publish("hi again", "", "test_queue");
         $ch->consume(function (Message $msg, Channel $ch, Client $c) {
             $this->assertEquals("hi again", $msg->content);
             $c->stop();
@@ -139,7 +139,8 @@ class ChannelTest extends TestCase
 
         $ch = $c->connect()->channel();
         $ch->queueDeclare("test_queue", MQ_AUTODELETE);
-        $ch->publish("<b>hi html</b>", ["content-type" => "text/html"], "", "test_queue");
+        $msg = new Message("<b>hi html</b>", ["content-type" => "text/html"]);
+        $ch->publish($msg, "", "test_queue");
         $ch->consume(function (Message $msg, Channel $ch, Client $c) {
             $this->assertTrue($msg->hasHeader("content-type"));
             $this->assertEquals("text/html", $msg->getHeader("content-type"));
@@ -162,7 +163,7 @@ class ChannelTest extends TestCase
 
         $ch = $c->connect()->channel();
         $ch->queueDeclare("test_queue", MQ_AUTODELETE);
-        $ch->publish($body, [], "", "test_queue");
+        $ch->publish($body, "", "test_queue");
         $ch->consume(function (Message $msg, Channel $ch, Client $c) use ($body) {
             $this->assertEquals($body, $msg->content);
             $c->stop();
