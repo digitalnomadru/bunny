@@ -17,6 +17,7 @@ use Bunny\Protocol\MethodBasicReturnFrame;
 use Bunny\Protocol\MethodChannelCloseFrame;
 use Bunny\Protocol\MethodChannelCloseOkFrame;
 use Bunny\Protocol\MethodFrame;
+use LogicException;
 use React\Promise\Deferred;
 use React\Promise\PromiseInterface;
 
@@ -35,31 +36,18 @@ define('MQ_NOLOCAL',  512);
 /**
  * AMQP channel.
  *
- * - Closely works with underlying client instance.
- * - Manages consumers.
- *
- * @author Jakub Kulhan <jakub.kulhan@gmail.com>
+ * End-user class to interact with RabbitMQ. Proxies methods to client.
  */
 class Channel
 {
-    use ChannelMethods {
-        ChannelMethods::consume as private consumeImpl;
-        ChannelMethods::ack as private ackImpl;
-        ChannelMethods::reject as private rejectImpl;
-        ChannelMethods::nack as private nackImpl;
-        ChannelMethods::get as private getImpl;
-        ChannelMethods::publish as private publishImpl;
-        ChannelMethods::cancel as private cancelImpl;
-        ChannelMethods::txSelect as private txSelectImpl;
-        ChannelMethods::txCommit as private txCommitImpl;
-        ChannelMethods::txRollback as private txRollbackImpl;
-        ChannelMethods::confirmSelect as private confirmSelectImpl;
-    }
+    public int $defaultQueueFlags = MQ_DURABLE;
+    public array $defaultQueueArguments = [];
 
+    public int $id;
+    public ?AbstractClient $client;
     public int $deliveryTag;
 
     public int $state = ChannelStateEnum::READY;
-
     public int $mode = ChannelModeEnum::REGULAR;
 
     /** @var callable[] */
@@ -94,6 +82,116 @@ class Channel
         $this->client = $client;
         $this->id = $channelId;
         $this->bodyBuffer = new Buffer();
+    }
+
+    public function exchangeDeclare(
+        string  $name,
+        string  $type = 'direct',
+        int     $flags = MQ_DURABLE,
+        array   $arguments = []
+    ): PromiseInterface|bool|Protocol\MethodExchangeDeclareOkFrame
+    {
+        return $this->client->exchangeDeclare(
+            $this->id,
+            $name,
+            $type,
+            $flags & MQ_PASSIVE,
+            $flags & MQ_DURABLE,
+            $flags & MQ_AUTODELETE,
+            $flags & MQ_INTERNAL,
+            $flags & MQ_NOWAIT,
+            $arguments
+        );
+    }
+
+    /**
+     * Delete an exchange.
+     *
+     * @param string $exchange
+     * @param int $flags (MQ_IFUNUSED, MQ_NOWAIT)
+     */
+    public function exchangeDelete(string $exchange, int $flags = 0): Protocol\MethodExchangeDeleteOkFrame|PromiseInterface|bool
+    {
+        return $this->client->exchangeDelete($this->id, $exchange, $flags & MQ_IFUNUSED, $flags & MQ_NOWAIT);
+    }
+
+    public function queueDeclare(?string $name = '', ?int $flags = null, array $arguments = []) : string
+    {
+        $flags ??= $this->defaultQueueFlags;
+
+        $ok = $this->client->queueDeclare(
+            $this->id,
+            $name ?? '',
+            $flags & MQ_PASSIVE,
+            $flags & MQ_DURABLE,
+            $flags & MQ_EXCLUSIVE,
+            $flags & MQ_AUTODELETE,
+            $flags & MQ_NOWAIT,
+            array_merge($this->defaultQueueArguments, $arguments)
+        );
+        return $ok->queue;
+    }
+
+    /**
+     * Delete all messages.
+     */
+    public function queuePurge(string $name, bool $nowait = false): PromiseInterface|bool|Protocol\MethodQueuePurgeOkFrame
+    {
+        return $this->client->queuePurge($this->id, $name, $nowait);
+    }
+
+    public function queueDelete(string $queue, int $flags = 0): PromiseInterface|Protocol\MethodQueueDeleteOkFrame|bool
+    {
+        return $this->client->queueDelete(
+            $this->id,
+            $queue,
+            $flags & MQ_IFUNUSED,
+            $flags & MQ_IFEMPTY,
+            $flags & MQ_NOWAIT
+        );
+    }
+
+    public function exchangeBind(
+        string $destination,
+        string $source,
+        string $routingKey = '',
+        bool $nowait = false,
+        array $arguments = []
+    ): Protocol\MethodExchangeBindOkFrame|PromiseInterface|bool
+    {
+        return $this->client->exchangeBind($this->id, $destination, $source, $routingKey, $nowait, $arguments);
+    }
+
+    public function exchangeUnbind(
+        string $destination,
+        string $source,
+        string $routingKey = '',
+        bool   $nowait = false,
+        array  $arguments = []
+    ): PromiseInterface|bool|Protocol\MethodExchangeUnbindOkFrame
+    {
+        return $this->client->exchangeUnbind($this->id, $destination, $source, $routingKey, $nowait, $arguments);
+    }
+
+    public function queueBind(
+        string $queue,
+        string $exchange,
+        string $routingKey = '',
+        int $flags = 0,
+        array $arguments = []
+    ): Protocol\MethodQueueBindOkFrame|PromiseInterface|bool
+    {
+        return $this->client->queueBind($this->id, $queue, $exchange, $routingKey, $flags & MQ_NOWAIT, $arguments);
+    }
+
+    public function queueUnbind(
+        string $queue,
+        string $exchange,
+        string $routingKey = '',
+        array $arguments = []
+    ): Protocol\MethodQueueUnbindOkFrame|PromiseInterface
+    {
+        return $this->client->queueUnbind($this->id, $queue, $exchange, $routingKey, $arguments);
     }
 
     /**
@@ -181,34 +279,33 @@ class Channel
         });
     }
 
+
     /**
-     * Creates new consumer on channel.
+     * Tell RabbitMQ to PUSH messages from queue to this channel.
+     * If messages are consumed, Channel need to run() to fetch it.
+     * Messages already sent to a consumer not available for get().
      *
+     * @return string Consumer tag
      */
-    public function consume(
-        callable $callback,
-        string $queue = "",
-        string $consumerTag = "",
-        bool $noLocal = false,
-        bool $noAck = false,
-        bool $exclusive = false,
-        bool $nowait = false,
-        array $arguments = []
-    ): MethodBasicConsumeOkFrame|PromiseInterface
+    public function consume(callable $callback, string $queue = '', string $tag = '', int $flags = 0, array $arguments = []) : string
     {
-        $response = $this->consumeImpl($queue, $consumerTag, $noLocal, $noAck, $exclusive, $nowait, $arguments);
+        $response = $this->client->consume(
+            $this->id,
+            $queue,
+            $tag,
+            $flags & MQ_NOLOCAL,
+            $flags & MQ_NOACK,
+            $flags & MQ_EXCLUSIVE,
+            $flags & MQ_NOWAIT,
+            $arguments
+        );
 
         if ($response instanceof MethodBasicConsumeOkFrame) {
             $this->deliverCallbacks[$response->consumerTag] = $callback;
-            return $response;
+            return $response->consumerTag;
 
-        } elseif ($response instanceof PromiseInterface) {
-            return $response->then(function (MethodBasicConsumeOkFrame $response) use ($callback) {
-                $this->deliverCallbacks[$response->consumerTag] = $callback;
-                return $response;
-            });
-
-        } else {
+        }
+        else {
             throw new ChannelException(
                 "basic.consume unexpected response of type " . gettype($response) .
                 (is_object($response) ? " (" . get_class($response) . ")" : "") .
@@ -221,34 +318,9 @@ class Channel
      * Convenience method that registers consumer and then starts client event loop.
      *
      */
-    public function run(
-        callable $callback,
-        string $queue = "",
-        string $consumerTag = "",
-        bool $noLocal = false,
-        bool $noAck = false,
-        bool $exclusive = false,
-        bool $nowait = false,
-        array $arguments = []
-    ): void
+    public function run(int $maxSeconds = null): void
     {
-        $response = $this->consume($callback, $queue, $consumerTag, $noLocal, $noAck, $exclusive, $nowait, $arguments);
-
-        if ($response instanceof MethodBasicConsumeOkFrame) {
-            $this->client->run();
-
-        } elseif ($response instanceof PromiseInterface) {
-            $response->done(function () {
-                $this->client->run();
-            });
-
-        } else {
-            throw new ChannelException(
-                "Unexpected response of type " . gettype($response) .
-                (is_object($response) ? " (" . get_class($response) . ")" : "") .
-                "."
-            );
-        }
+        $this->client->run($maxSeconds);
     }
 
     /**
@@ -257,7 +329,7 @@ class Channel
      */
     public function ack(Message $message, $multiple = false): PromiseInterface|bool
     {
-        return $this->ackImpl($message->deliveryTag, $multiple);
+        return $this->client->ack($this->id, $message->deliveryTag, $multiple);
     }
 
     /**
@@ -266,7 +338,7 @@ class Channel
      */
     public function nack(Message $message, bool $multiple = false, bool $requeue = true): PromiseInterface|bool
     {
-        return $this->nackImpl($message->deliveryTag, $multiple, $requeue);
+        return $this->client->nack($this->id, $message->deliveryTag, $multiple, $requeue);
     }
 
     /**
@@ -275,7 +347,7 @@ class Channel
      */
     public function reject(Message $message, bool $requeue = true): PromiseInterface|bool
     {
-        return $this->rejectImpl($message->deliveryTag, $requeue);
+        return $this->client->reject($this->id, $message->deliveryTag, $requeue);
     }
 
     /**
@@ -288,7 +360,7 @@ class Channel
             throw new ChannelException("Another 'basic.get' already in progress. You should use 'basic.consume' instead of multiple 'basic.get'.");
         }
 
-        $response = $this->getImpl($queue, $noAck);
+        $response = $this->client->get($this->id, $queue, $noAck);
 
         if ($response instanceof PromiseInterface) {
             $this->getDeferred = new Deferred();
@@ -305,7 +377,7 @@ class Channel
                     $this->state = ChannelStateEnum::AWAITING_HEADER;
 
                 } else {
-                    throw new \LogicException("This statement should never be reached.");
+                    throw new LogicException("This statement should never be reached.");
                 }
             });
 
@@ -352,7 +424,7 @@ class Channel
             return $message;
 
         } else {
-            throw new \LogicException("This statement should never be reached.");
+            throw new LogicException("This statement should never be reached.");
         }
     }
 
@@ -368,7 +440,7 @@ class Channel
      */
     public function publish($body, array $headers = [], $exchange = '', $routingKey = '', $mandatory = false, $immediate = false): PromiseInterface|bool|int
     {
-        $response = $this->publishImpl($body, $headers, $exchange, $routingKey, $mandatory, $immediate);
+        $response = $this->client->publish($this->id, $body, $headers, $exchange, $routingKey, $mandatory, $immediate);
 
         if ($this->mode === ChannelModeEnum::CONFIRM) {
             if ($response instanceof PromiseInterface) {
@@ -391,9 +463,19 @@ class Channel
      */
     public function cancel($consumerTag, $nowait = false): Protocol\MethodBasicCancelOkFrame|PromiseInterface|bool
     {
-        $response = $this->cancelImpl($consumerTag, $nowait);
+        $response = $this->client->cancel($this->id, $consumerTag, $nowait);
         unset($this->deliverCallbacks[$consumerTag]);
         return $response;
+    }
+
+    public function qos($prefetchSize = 0, $prefetchCount = 0, $global = false): Protocol\MethodBasicQosOkFrame|PromiseInterface
+    {
+        return $this->client->qos($this->id, $prefetchSize, $prefetchCount, $global);
+    }
+
+    public function recover($requeue = false): PromiseInterface|Protocol\MethodBasicRecoverOkFrame
+    {
+        return $this->client->recover($this->id, $requeue);
     }
 
     /**
@@ -406,7 +488,7 @@ class Channel
             throw new ChannelException("Channel not in regular mode, cannot change to transactional mode.");
         }
 
-        $response = $this->txSelectImpl();
+        $response = $this->client->txSelect($this->id);
 
         if ($response instanceof PromiseInterface) {
             return $response->then(function ($response) {
@@ -430,7 +512,7 @@ class Channel
             throw new ChannelException("Channel not in transactional mode, cannot call 'tx.commit'.");
         }
 
-        return $this->txCommitImpl();
+        return $this->client->txCommit($this->id);
     }
 
     /**
@@ -443,7 +525,7 @@ class Channel
             throw new ChannelException("Channel not in transactional mode, cannot call 'tx.rollback'.");
         }
 
-        return $this->txRollbackImpl();
+        return $this->client->txRollback($this->id);
     }
 
     /**
@@ -456,7 +538,7 @@ class Channel
             throw new ChannelException("Channel not in regular mode, cannot change to transactional mode.");
         }
 
-        $response = $this->confirmSelectImpl($nowait);
+        $response = $this->client->confirmSelect($this->id, $nowait);
 
         if ($response instanceof PromiseInterface) {
             return $response->then(function ($response) use ($callback) {
@@ -508,7 +590,7 @@ class Channel
                 } elseif ($currentState === ChannelStateEnum::AWAITING_BODY) {
                     $msg = "Got method frame, expected body frame.";
                 } else {
-                    throw new \LogicException("Unhandled channel state.");
+                    throw new LogicException("Unhandled channel state.");
                 }
 
                 $this->client->disconnect(Constants::STATUS_UNEXPECTED_FRAME, $msg);
@@ -566,7 +648,7 @@ class Channel
                 } elseif ($currentState === ChannelStateEnum::AWAITING_BODY) {
                     $msg = "Got header frame, expected content frame.";
                 } else {
-                    throw new \LogicException("Unhandled channel state.");
+                    throw new LogicException("Unhandled channel state.");
                 }
 
                 $this->client->disconnect(Constants::STATUS_UNEXPECTED_FRAME, $msg);
@@ -598,7 +680,7 @@ class Channel
                 } elseif ($currentState === ChannelStateEnum::AWAITING_HEADER) {
                     $msg = "Got body frame, expected header frame.";
                 } else {
-                    throw new \LogicException("Unhandled channel state.");
+                    throw new LogicException("Unhandled channel state.");
                 }
 
                 $this->client->disconnect(Constants::STATUS_UNEXPECTED_FRAME, $msg);
@@ -692,7 +774,7 @@ class Channel
             $this->headerFrame = null;
 
         } else {
-            throw new \LogicException("Either return or deliver frame has to be handled here.");
+            throw new LogicException("Either return or deliver frame has to be handled here.");
         }
     }
 }

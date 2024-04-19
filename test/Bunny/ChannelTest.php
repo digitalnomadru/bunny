@@ -46,7 +46,7 @@ class ChannelTest extends TestCase
         $c = $this->helper->createClient();
 
         $ch = $c->connect()->channel();
-        $ch->exchangeDeclare("test_exchange", "direct", false, false, true);
+        $ch->exchangeDeclare("test_exchange", "direct", MQ_AUTODELETE);
         $c->disconnect();
 
         $this->assertTrue($c->isConnected());
@@ -59,7 +59,7 @@ class ChannelTest extends TestCase
         $c = $this->helper->createClient();
 
         $ch = $c->connect()->channel();
-        $ch->queueDeclare("test_queue", false, false, false, true);
+        $ch->queueDeclare("test_queue", MQ_AUTODELETE);
         $c->disconnect();
 
         $this->assertTrue($c->isConnected());
@@ -72,8 +72,8 @@ class ChannelTest extends TestCase
         $c = $this->helper->createClient();
 
         $ch = $c->connect()->channel();
-        $ch->exchangeDeclare("test_exchange", "direct", false, false, true);
-        $ch->queueDeclare("test_queue", false, false, false, true);
+        $ch->exchangeDeclare("test_exchange", "direct", MQ_AUTODELETE);
+        $ch->queueDeclare("test_queue", MQ_AUTODELETE);
         $ch->queueBind("test_queue", "test_exchange");
         $ch->client->disconnect();
 
@@ -100,7 +100,7 @@ class ChannelTest extends TestCase
         $c = $this->helper->createClient();
 
         $ch = $c->connect()->channel();
-        $ch->queueDeclare("test_queue", false, false, false, true);
+        $ch->queueDeclare("test_queue", MQ_AUTODELETE);
         $ch->consume(function (Message $msg, Channel $ch, Client $c) {
             $this->assertEquals("hi", $msg->content);
             $c->stop();
@@ -119,12 +119,13 @@ class ChannelTest extends TestCase
         $c = $this->helper->createClient();
 
         $ch = $c->connect()->channel();
-        $ch->queueDeclare("test_queue", false, false, false, true);
+        $ch->queueDeclare("test_queue", MQ_AUTODELETE);
         $ch->publish("hi again", [], "", "test_queue");
-        $ch->run(function (Message $msg, Channel $ch, Client $c) {
+        $ch->consume(function (Message $msg, Channel $ch, Client $c) {
             $this->assertEquals("hi again", $msg->content);
             $c->stop();
         });
+        $ch->run();
         $c->disconnect();
 
         $this->assertTrue($c->isConnected());
@@ -137,14 +138,15 @@ class ChannelTest extends TestCase
         $c = $this->helper->createClient();
 
         $ch = $c->connect()->channel();
-        $ch->queueDeclare("test_queue", false, false, false, true);
+        $ch->queueDeclare("test_queue", MQ_AUTODELETE);
         $ch->publish("<b>hi html</b>", ["content-type" => "text/html"], "", "test_queue");
-        $ch->run(function (Message $msg, Channel $ch, Client $c) {
+        $ch->consume(function (Message $msg, Channel $ch, Client $c) {
             $this->assertTrue($msg->hasHeader("content-type"));
             $this->assertEquals("text/html", $msg->getHeader("content-type"));
             $this->assertEquals("<b>hi html</b>", $msg->content);
             $c->stop();
         });
+        $ch->run();
         $c->disconnect();
 
         $this->assertTrue($c->isConnected());
@@ -159,12 +161,13 @@ class ChannelTest extends TestCase
         $c = $this->helper->createClient();
 
         $ch = $c->connect()->channel();
-        $ch->queueDeclare("test_queue", false, false, false, true);
+        $ch->queueDeclare("test_queue", MQ_AUTODELETE);
         $ch->publish($body, [], "", "test_queue");
-        $ch->run(function (Message $msg, Channel $ch, Client $c) use ($body) {
+        $ch->consume(function (Message $msg, Channel $ch, Client $c) use ($body) {
             $this->assertEquals($body, $msg->content);
             $c->stop();
         });
+        $ch->run();
         $c->disconnect();
 
         $this->assertTrue($c->isConnected());
