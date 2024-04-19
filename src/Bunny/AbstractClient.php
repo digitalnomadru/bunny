@@ -337,12 +337,10 @@ abstract class AbstractClient
     /**
      * Responds to authentication challenge
      *
-     * @param MethodConnectionStartFrame $start
-     * @return boolean|Promise\PromiseInterface
      */
-    protected function authResponse(MethodConnectionStartFrame $start)
+    protected function authResponse(MethodConnectionStartFrame $start): bool
     {
-        if (strpos($start->mechanisms, "AMQPLAIN") === false) {
+        if (!str_contains($start->mechanisms, "AMQPLAIN")) {
             throw new ClientException("Server does not support AMQPLAIN mechanism (supported: {$start->mechanisms}).");
         }
 
@@ -392,9 +390,8 @@ abstract class AbstractClient
      *
      * Channel gets first available channel id.
      *
-     * @return Channel|Promise\PromiseInterface
      */
-    public function channel()
+    public function channel(): Channel
     {
         // since we not found any free channel, then make one
         $channelId = $this->findChannelId();
@@ -405,12 +402,8 @@ abstract class AbstractClient
         if ($response instanceof MethodChannelOpenOkFrame) {
             return $this->channels[$channelId];
 
-        } elseif ($response instanceof Promise\PromiseInterface) {
-            return $response->then(function () use ($channelId) {
-                return $this->channels[$channelId];
-            });
-
-        } else {
+        }
+        else {
             $this->state = ClientStateEnum::ERROR;
 
             throw new ClientException(

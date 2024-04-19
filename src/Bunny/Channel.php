@@ -89,7 +89,7 @@ class Channel
         string  $type = 'direct',
         int     $flags = MQ_DURABLE,
         array   $arguments = []
-    ): PromiseInterface|bool|Protocol\MethodExchangeDeclareOkFrame
+    ): bool|Protocol\MethodExchangeDeclareOkFrame
     {
         return $this->client->exchangeDeclare(
             $this->id,
@@ -110,7 +110,7 @@ class Channel
      * @param string $exchange
      * @param int $flags (MQ_IFUNUSED, MQ_NOWAIT)
      */
-    public function exchangeDelete(string $exchange, int $flags = 0): Protocol\MethodExchangeDeleteOkFrame|PromiseInterface|bool
+    public function exchangeDelete(string $exchange, int $flags = 0): Protocol\MethodExchangeDeleteOkFrame|bool
     {
         return $this->client->exchangeDelete($this->id, $exchange, $flags & MQ_IFUNUSED, $flags & MQ_NOWAIT);
     }
@@ -135,12 +135,12 @@ class Channel
     /**
      * Delete all messages.
      */
-    public function queuePurge(string $name, bool $nowait = false): PromiseInterface|bool|Protocol\MethodQueuePurgeOkFrame
+    public function queuePurge(string $name, bool $nowait = false): bool|Protocol\MethodQueuePurgeOkFrame
     {
         return $this->client->queuePurge($this->id, $name, $nowait);
     }
 
-    public function queueDelete(string $queue, int $flags = 0): PromiseInterface|Protocol\MethodQueueDeleteOkFrame|bool
+    public function queueDelete(string $queue, int $flags = 0): Protocol\MethodQueueDeleteOkFrame|bool
     {
         return $this->client->queueDelete(
             $this->id,
@@ -157,7 +157,7 @@ class Channel
         string $routingKey = '',
         bool $nowait = false,
         array $arguments = []
-    ): Protocol\MethodExchangeBindOkFrame|PromiseInterface|bool
+    ): Protocol\MethodExchangeBindOkFrame|bool
     {
         return $this->client->exchangeBind($this->id, $destination, $source, $routingKey, $nowait, $arguments);
     }
@@ -168,7 +168,7 @@ class Channel
         string $routingKey = '',
         bool   $nowait = false,
         array  $arguments = []
-    ): PromiseInterface|bool|Protocol\MethodExchangeUnbindOkFrame
+    ): bool|Protocol\MethodExchangeUnbindOkFrame
     {
         return $this->client->exchangeUnbind($this->id, $destination, $source, $routingKey, $nowait, $arguments);
     }
@@ -179,7 +179,7 @@ class Channel
         string $routingKey = '',
         int $flags = 0,
         array $arguments = []
-    ): Protocol\MethodQueueBindOkFrame|PromiseInterface|bool
+    ): Protocol\MethodQueueBindOkFrame|bool
     {
         return $this->client->queueBind($this->id, $queue, $exchange, $routingKey, $flags & MQ_NOWAIT, $arguments);
     }
@@ -189,7 +189,7 @@ class Channel
         string $exchange,
         string $routingKey = '',
         array $arguments = []
-    ): Protocol\MethodQueueUnbindOkFrame|PromiseInterface
+    ): Protocol\MethodQueueUnbindOkFrame
     {
         return $this->client->queueUnbind($this->id, $queue, $exchange, $routingKey, $arguments);
     }
@@ -327,7 +327,7 @@ class Channel
      * Acks given message.
      *
      */
-    public function ack(Message $message, $multiple = false): PromiseInterface|bool
+    public function ack(Message $message, $multiple = false): bool
     {
         return $this->client->ack($this->id, $message->deliveryTag, $multiple);
     }
@@ -336,7 +336,7 @@ class Channel
      * Nacks given message.
      *
      */
-    public function nack(Message $message, bool $multiple = false, bool $requeue = true): PromiseInterface|bool
+    public function nack(Message $message, bool $multiple = false, bool $requeue = true): bool
     {
         return $this->client->nack($this->id, $message->deliveryTag, $multiple, $requeue);
     }
@@ -345,7 +345,7 @@ class Channel
      * Rejects given message.
      *
      */
-    public function reject(Message $message, bool $requeue = true): PromiseInterface|bool
+    public function reject(Message $message, bool $requeue = true): bool
     {
         return $this->client->reject($this->id, $message->deliveryTag, $requeue);
     }
@@ -354,7 +354,7 @@ class Channel
      * Synchronously returns message if there is any waiting in the queue.
      *
      */
-    public function get(string $queue = "", bool $noAck = false): PromiseInterface|Message|null
+    public function get(string $queue = "", bool $noAck = false): Message|null
     {
         if ($this->getDeferred !== null) {
             throw new ChannelException("Another 'basic.get' already in progress. You should use 'basic.consume' instead of multiple 'basic.get'.");
@@ -362,28 +362,7 @@ class Channel
 
         $response = $this->client->get($this->id, $queue, $noAck);
 
-        if ($response instanceof PromiseInterface) {
-            $this->getDeferred = new Deferred();
-
-            $response->done(function ($frame) {
-                if ($frame instanceof MethodBasicGetEmptyFrame) {
-                    // deferred has to be first nullified and then resolved, otherwise results in race condition
-                    $deferred = $this->getDeferred;
-                    $this->getDeferred = null;
-                    $deferred->resolve(null);
-
-                } elseif ($frame instanceof MethodBasicGetOkFrame) {
-                    $this->getOkFrame = $frame;
-                    $this->state = ChannelStateEnum::AWAITING_HEADER;
-
-                } else {
-                    throw new LogicException("This statement should never be reached.");
-                }
-            });
-
-            return $this->getDeferred->promise();
-
-        } elseif ($response instanceof MethodBasicGetEmptyFrame) {
+        if ($response instanceof MethodBasicGetEmptyFrame) {
             return null;
 
         } elseif ($response instanceof MethodBasicGetOkFrame) {
@@ -438,18 +417,12 @@ class Channel
      * @param bool $mandatory
      * @param bool $immediate
      */
-    public function publish($body, array $headers = [], $exchange = '', $routingKey = '', $mandatory = false, $immediate = false): PromiseInterface|bool|int
+    public function publish($body, array $headers = [], $exchange = '', $routingKey = '', $mandatory = false, $immediate = false): bool|int
     {
         $response = $this->client->publish($this->id, $body, $headers, $exchange, $routingKey, $mandatory, $immediate);
 
         if ($this->mode === ChannelModeEnum::CONFIRM) {
-            if ($response instanceof PromiseInterface) {
-                return $response->then(function () {
-                    return ++$this->deliveryTag;
-                });
-            } else {
-                return ++$this->deliveryTag;
-            }
+            return ++$this->deliveryTag;
         } else {
             return $response;
         }
@@ -461,19 +434,19 @@ class Channel
      * @param string $consumerTag
      * @param bool $nowait
      */
-    public function cancel($consumerTag, $nowait = false): Protocol\MethodBasicCancelOkFrame|PromiseInterface|bool
+    public function cancel($consumerTag, $nowait = false): Protocol\MethodBasicCancelOkFrame|bool
     {
         $response = $this->client->cancel($this->id, $consumerTag, $nowait);
         unset($this->deliverCallbacks[$consumerTag]);
         return $response;
     }
 
-    public function qos($prefetchSize = 0, $prefetchCount = 0, $global = false): Protocol\MethodBasicQosOkFrame|PromiseInterface
+    public function qos($prefetchSize = 0, $prefetchCount = 0, $global = false): Protocol\MethodBasicQosOkFrame
     {
         return $this->client->qos($this->id, $prefetchSize, $prefetchCount, $global);
     }
 
-    public function recover($requeue = false): PromiseInterface|Protocol\MethodBasicRecoverOkFrame
+    public function recover($requeue = false): Protocol\MethodBasicRecoverOkFrame
     {
         return $this->client->recover($this->id, $requeue);
     }
@@ -482,7 +455,7 @@ class Channel
      * Changes channel to transactional mode. All messages are published to queues only after {@link txCommit()} is called.
      *
      */
-    public function txSelect(): PromiseInterface|Protocol\MethodTxSelectOkFrame
+    public function txSelect(): Protocol\MethodTxSelectOkFrame
     {
         if ($this->mode !== ChannelModeEnum::REGULAR) {
             throw new ChannelException("Channel not in regular mode, cannot change to transactional mode.");
@@ -490,23 +463,15 @@ class Channel
 
         $response = $this->client->txSelect($this->id);
 
-        if ($response instanceof PromiseInterface) {
-            return $response->then(function ($response) {
-                $this->mode = ChannelModeEnum::TRANSACTIONAL;
-                return $response;
-            });
-
-        } else {
-            $this->mode = ChannelModeEnum::TRANSACTIONAL;
-            return $response;
-        }
+        $this->mode = ChannelModeEnum::TRANSACTIONAL;
+        return $response;
     }
 
     /**
      * Commit transaction.
      *
      */
-    public function txCommit(): Protocol\MethodTxCommitOkFrame|PromiseInterface
+    public function txCommit(): Protocol\MethodTxCommitOkFrame
     {
         if ($this->mode !== ChannelModeEnum::TRANSACTIONAL) {
             throw new ChannelException("Channel not in transactional mode, cannot call 'tx.commit'.");
@@ -519,7 +484,7 @@ class Channel
      * Rollback transaction.
      *
      */
-    public function txRollback(): PromiseInterface|Protocol\MethodTxRollbackOkFrame
+    public function txRollback(): Protocol\MethodTxRollbackOkFrame
     {
         if ($this->mode !== ChannelModeEnum::TRANSACTIONAL) {
             throw new ChannelException("Channel not in transactional mode, cannot call 'tx.rollback'.");
@@ -532,7 +497,7 @@ class Channel
      * Changes channel to confirm mode. Broker then asynchronously sends 'basic.ack's for published messages.
      *
      */
-    public function confirmSelect(callable $callback = null, bool $nowait = false): PromiseInterface|Protocol\MethodConfirmSelectOkFrame
+    public function confirmSelect(callable $callback = null, bool $nowait = false): Protocol\MethodConfirmSelectOkFrame
     {
         if ($this->mode !== ChannelModeEnum::REGULAR) {
             throw new ChannelException("Channel not in regular mode, cannot change to transactional mode.");
@@ -540,16 +505,8 @@ class Channel
 
         $response = $this->client->confirmSelect($this->id, $nowait);
 
-        if ($response instanceof PromiseInterface) {
-            return $response->then(function ($response) use ($callback) {
-                $this->enterConfirmMode($callback);
-                return $response;
-            });
-
-        } else {
-            $this->enterConfirmMode($callback);
-            return $response;
-        }
+        $this->enterConfirmMode($callback);
+        return $response;
     }
 
     private function enterConfirmMode(callable $callback = null): void

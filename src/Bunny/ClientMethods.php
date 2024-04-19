@@ -2,10 +2,8 @@
 namespace Bunny;
 
 use Bunny\Exception\ClientException;
-use Bunny\Protocol;
 use Bunny\Protocol\Buffer;
 use React\Promise\Deferred;
-use React\Promise\PromiseInterface;
 
 /**
  * AMQP-0-9-1 client methods
@@ -56,7 +54,7 @@ trait ClientMethods
     /**
      * Writes all data from write buffer to stream.
      *
-     * @return boolean|PromiseInterface
+     * @return boolean
      */
     abstract protected function flushWriteBuffer();
 
@@ -77,7 +75,7 @@ trait ClientMethods
     /**
      * @param int $channel
      *
-     * @return Protocol\ContentHeaderFrame|PromiseInterface
+     * @return Protocol\ContentHeaderFrame
      */
     public function awaitContentHeader($channel)
     {
@@ -125,7 +123,7 @@ trait ClientMethods
     /**
      * @param int $channel
      *
-     * @return Protocol\ContentBodyFrame|PromiseInterface
+     * @return Protocol\ContentBodyFrame
      */
     public function awaitContentBody($channel)
     {
@@ -171,7 +169,7 @@ trait ClientMethods
     }
 
     /**
-     * @return Protocol\MethodConnectionStartFrame|PromiseInterface
+     * @return Protocol\MethodConnectionStartFrame
      */
     public function awaitConnectionStart()
     {
@@ -226,7 +224,7 @@ trait ClientMethods
     }
 
     /**
-     * @return Protocol\MethodConnectionSecureFrame|PromiseInterface
+     * @return Protocol\MethodConnectionSecureFrame
      */
     public function awaitConnectionSecure()
     {
@@ -277,7 +275,7 @@ trait ClientMethods
     }
 
     /**
-     * @return Protocol\MethodConnectionTuneFrame|PromiseInterface
+     * @return Protocol\MethodConnectionTuneFrame
      */
     public function awaitConnectionTune()
     {
@@ -346,7 +344,7 @@ trait ClientMethods
     }
 
     /**
-     * @return Protocol\MethodConnectionOpenOkFrame|PromiseInterface
+     * @return Protocol\MethodConnectionOpenOkFrame
      */
     public function awaitConnectionOpenOk()
     {
@@ -401,7 +399,7 @@ trait ClientMethods
     }
 
     /**
-     * @return Protocol\MethodConnectionCloseFrame|PromiseInterface
+     * @return Protocol\MethodConnectionCloseFrame
      */
     public function awaitConnectionClose()
     {
@@ -451,7 +449,7 @@ trait ClientMethods
     }
 
     /**
-     * @return Protocol\MethodConnectionCloseOkFrame|PromiseInterface
+     * @return Protocol\MethodConnectionCloseOkFrame
      */
     public function awaitConnectionCloseOk()
     {
@@ -489,7 +487,7 @@ trait ClientMethods
     }
 
     /**
-     * @return Protocol\MethodConnectionBlockedFrame|PromiseInterface
+     * @return Protocol\MethodConnectionBlockedFrame
      */
     public function awaitConnectionBlocked()
     {
@@ -527,7 +525,7 @@ trait ClientMethods
     }
 
     /**
-     * @return Protocol\MethodConnectionUnblockedFrame|PromiseInterface
+     * @return Protocol\MethodConnectionUnblockedFrame
      */
     public function awaitConnectionUnblocked()
     {
@@ -581,7 +579,7 @@ trait ClientMethods
     /**
      * @param int $channel
      *
-     * @return Protocol\MethodChannelOpenOkFrame|PromiseInterface
+     * @return Protocol\MethodChannelOpenOkFrame
      */
     public function awaitChannelOpenOk($channel)
     {
@@ -643,7 +641,7 @@ trait ClientMethods
     /**
      * @param int $channel
      *
-     * @return Protocol\MethodChannelFlowFrame|PromiseInterface
+     * @return Protocol\MethodChannelFlowFrame
      */
     public function awaitChannelFlow($channel)
     {
@@ -704,7 +702,7 @@ trait ClientMethods
     /**
      * @param int $channel
      *
-     * @return Protocol\MethodChannelFlowOkFrame|PromiseInterface
+     * @return Protocol\MethodChannelFlowOkFrame
      */
     public function awaitChannelFlowOk($channel)
     {
@@ -768,7 +766,7 @@ trait ClientMethods
     /**
      * @param int $channel
      *
-     * @return Protocol\MethodChannelCloseFrame|PromiseInterface
+     * @return Protocol\MethodChannelCloseFrame
      */
     public function awaitChannelClose($channel)
     {
@@ -828,7 +826,7 @@ trait ClientMethods
     /**
      * @param int $channel
      *
-     * @return Protocol\MethodChannelCloseOkFrame|PromiseInterface
+     * @return Protocol\MethodChannelCloseOkFrame
      */
     public function awaitChannelCloseOk($channel)
     {
@@ -891,7 +889,7 @@ trait ClientMethods
     /**
      * @param int $channel
      *
-     * @return Protocol\MethodAccessRequestOkFrame|PromiseInterface
+     * @return Protocol\MethodAccessRequestOkFrame
      */
     public function awaitAccessRequestOk($channel)
     {
@@ -962,7 +960,7 @@ trait ClientMethods
     /**
      * @param int $channel
      *
-     * @return Protocol\MethodExchangeDeclareOkFrame|PromiseInterface
+     * @return Protocol\MethodExchangeDeclareOkFrame
      */
     public function awaitExchangeDeclareOk($channel)
     {
@@ -1030,7 +1028,7 @@ trait ClientMethods
     /**
      * @param int $channel
      *
-     * @return Protocol\MethodExchangeDeleteOkFrame|PromiseInterface
+     * @return Protocol\MethodExchangeDeleteOkFrame
      */
     public function awaitExchangeDeleteOk($channel)
     {
@@ -1102,7 +1100,7 @@ trait ClientMethods
     /**
      * @param int $channel
      *
-     * @return Protocol\MethodExchangeBindOkFrame|PromiseInterface
+     * @return Protocol\MethodExchangeBindOkFrame
      */
     public function awaitExchangeBindOk($channel)
     {
@@ -1174,7 +1172,7 @@ trait ClientMethods
     /**
      * @param int $channel
      *
-     * @return Protocol\MethodExchangeUnbindOkFrame|PromiseInterface
+     * @return Protocol\MethodExchangeUnbindOkFrame
      */
     public function awaitExchangeUnbindOk($channel)
     {
@@ -1244,7 +1242,7 @@ trait ClientMethods
     /**
      * @param int $channel
      *
-     * @return Protocol\MethodQueueDeclareOkFrame|PromiseInterface
+     * @return Protocol\MethodQueueDeclareOkFrame
      */
     public function awaitQueueDeclareOk($channel)
     {
@@ -1316,7 +1314,7 @@ trait ClientMethods
     /**
      * @param int $channel
      *
-     * @return Protocol\MethodQueueBindOkFrame|PromiseInterface
+     * @return Protocol\MethodQueueBindOkFrame
      */
     public function awaitQueueBindOk($channel)
     {
@@ -1384,7 +1382,7 @@ trait ClientMethods
     /**
      * @param int $channel
      *
-     * @return Protocol\MethodQueuePurgeOkFrame|PromiseInterface
+     * @return Protocol\MethodQueuePurgeOkFrame
      */
     public function awaitQueuePurgeOk($channel)
     {
@@ -1452,7 +1450,7 @@ trait ClientMethods
     /**
      * @param int $channel
      *
-     * @return Protocol\MethodQueueDeleteOkFrame|PromiseInterface
+     * @return Protocol\MethodQueueDeleteOkFrame
      */
     public function awaitQueueDeleteOk($channel)
     {
@@ -1519,7 +1517,7 @@ trait ClientMethods
     /**
      * @param int $channel
      *
-     * @return Protocol\MethodQueueUnbindOkFrame|PromiseInterface
+     * @return Protocol\MethodQueueUnbindOkFrame
      */
     public function awaitQueueUnbindOk($channel)
     {
@@ -1583,7 +1581,7 @@ trait ClientMethods
     /**
      * @param int $channel
      *
-     * @return Protocol\MethodBasicQosOkFrame|PromiseInterface
+     * @return Protocol\MethodBasicQosOkFrame
      */
     public function awaitQosOk($channel)
     {
@@ -1654,7 +1652,7 @@ trait ClientMethods
     /**
      * @param int $channel
      *
-     * @return Protocol\MethodBasicConsumeOkFrame|PromiseInterface
+     * @return Protocol\MethodBasicConsumeOkFrame
      */
     public function awaitConsumeOk($channel)
     {
@@ -1721,7 +1719,7 @@ trait ClientMethods
     /**
      * @param int $channel
      *
-     * @return Protocol\MethodBasicCancelOkFrame|PromiseInterface
+     * @return Protocol\MethodBasicCancelOkFrame
      */
     public function awaitCancelOk($channel)
     {
@@ -1954,7 +1952,7 @@ trait ClientMethods
     /**
      * @param int $channel
      *
-     * @return Protocol\MethodBasicReturnFrame|PromiseInterface
+     * @return Protocol\MethodBasicReturnFrame
      */
     public function awaitReturn($channel)
     {
@@ -2002,7 +2000,7 @@ trait ClientMethods
     /**
      * @param int $channel
      *
-     * @return Protocol\MethodBasicDeliverFrame|PromiseInterface
+     * @return Protocol\MethodBasicDeliverFrame
      */
     public function awaitDeliver($channel)
     {
@@ -2066,7 +2064,7 @@ trait ClientMethods
     /**
      * @param int $channel
      *
-     * @return Protocol\MethodBasicGetOkFrame|Protocol\MethodBasicGetEmptyFrame|PromiseInterface
+     * @return Protocol\MethodBasicGetOkFrame|Protocol\MethodBasicGetEmptyFrame
      */
     public function awaitGetOk($channel)
     {
@@ -2133,7 +2131,7 @@ trait ClientMethods
     /**
      * @param int $channel
      *
-     * @return Protocol\MethodBasicAckFrame|PromiseInterface
+     * @return Protocol\MethodBasicAckFrame
      */
     public function awaitAck($channel)
     {
@@ -2222,7 +2220,7 @@ trait ClientMethods
     /**
      * @param int $channel
      *
-     * @return Protocol\MethodBasicRecoverOkFrame|PromiseInterface
+     * @return Protocol\MethodBasicRecoverOkFrame
      */
     public function awaitRecoverOk($channel)
     {
@@ -2284,7 +2282,7 @@ trait ClientMethods
     /**
      * @param int $channel
      *
-     * @return Protocol\MethodBasicNackFrame|PromiseInterface
+     * @return Protocol\MethodBasicNackFrame
      */
     public function awaitNack($channel)
     {
@@ -2345,7 +2343,7 @@ trait ClientMethods
     /**
      * @param int $channel
      *
-     * @return Protocol\MethodTxSelectOkFrame|PromiseInterface
+     * @return Protocol\MethodTxSelectOkFrame
      */
     public function awaitTxSelectOk($channel)
     {
@@ -2406,7 +2404,7 @@ trait ClientMethods
     /**
      * @param int $channel
      *
-     * @return Protocol\MethodTxCommitOkFrame|PromiseInterface
+     * @return Protocol\MethodTxCommitOkFrame
      */
     public function awaitTxCommitOk($channel)
     {
@@ -2467,7 +2465,7 @@ trait ClientMethods
     /**
      * @param int $channel
      *
-     * @return Protocol\MethodTxRollbackOkFrame|PromiseInterface
+     * @return Protocol\MethodTxRollbackOkFrame
      */
     public function awaitTxRollbackOk($channel)
     {
@@ -2533,7 +2531,7 @@ trait ClientMethods
     /**
      * @param int $channel
      *
-     * @return Protocol\MethodConfirmSelectOkFrame|PromiseInterface
+     * @return Protocol\MethodConfirmSelectOkFrame
      */
     public function awaitConfirmSelectOk($channel)
     {
