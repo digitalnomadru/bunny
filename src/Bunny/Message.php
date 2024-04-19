@@ -1,65 +1,23 @@
 <?php
 namespace Bunny;
 
-/**
- * Convenience crate for transferring messages through app.
- *
- * @author Jakub Kulhan <jakub.kulhan@gmail.com>
- */
 class Message
 {
-
-    /** @var string */
-    public $consumerTag;
-
-    /** @var int */
-    public $deliveryTag;
-
-    /** @var boolean */
-    public $redelivered;
-
-    /** @var string */
-    public $exchange;
-
-    /** @var string */
-    public $routingKey;
-
-    /** @var array */
-    public $headers;
-
-    /** @var string */
-    public $content;
-
-    /**
-     * Constructor.
-     *
-     * @param string $consumerTag
-     * @param string $deliveryTag
-     * @param boolean $redelivered
-     * @param string $exchange
-     * @param string $routingKey
-     * @param array $headers
-     * @param string $content
-     */
-    public function __construct($consumerTag, $deliveryTag, $redelivered, $exchange, $routingKey, array $headers, $content)
-    {
-        $this->consumerTag = $consumerTag;
-        $this->deliveryTag = $deliveryTag;
-        $this->redelivered = $redelivered;
-        $this->exchange = $exchange;
-        $this->routingKey = $routingKey;
-        $this->headers = $headers;
-        $this->content = $content;
-    }
+    public function __construct(
+        public string   $content     = '',
+        public array    $headers     = [],
+        public string   $exchange    = '',
+        public string   $routingKey  = '',
+        public string   $consumerTag = '',
+        public ?int     $deliveryTag = null,
+        public bool     $redelivered = false
+    )
+    {}
 
     /**
      * Returns header or default value.
-     *
-     * @param string $name
-     * @param mixed $default
-     * @return mixed
      */
-    public function getHeader($name, $default = null)
+    public function getHeader(string $name, mixed $default = null): mixed
     {
         if (isset($this->headers[$name])) {
             return $this->headers[$name];
@@ -70,11 +28,8 @@ class Message
 
     /**
      * Returns TRUE if message has given header.
-     *
-     * @param string $name
-     * @return boolean
      */
-    public function hasHeader($name)
+    public function hasHeader(string $name): bool
     {
         return isset($this->headers[$name]);
     }

@@ -389,13 +389,13 @@ class Channel
             $this->state = ChannelStateEnum::READY;
 
             $message = new Message(
-                null,
-                $response->deliveryTag,
-                $response->redelivered,
+                $this->bodyBuffer->consume($this->bodyBuffer->getLength()),
+                $this->headerFrame->toArray(),
                 $response->exchange,
                 $response->routingKey,
-                $this->headerFrame->toArray(),
-                $this->bodyBuffer->consume($this->bodyBuffer->getLength())
+                '',
+                $response->deliveryTag,
+                $response->redelivered
             );
 
             $this->headerFrame = null;
@@ -426,6 +426,28 @@ class Channel
         } else {
             return $response;
         }
+    }
+
+    public function call(Message $message, string $exchange, string $rkey = '', int $timeout = 10) : ?Message
+    {
+        // register replies consumer once per channel (so direct reply-to knows our consumer tag)
+        $reply = null;
+        if (!isset($this->replyConsumer)) {
+            $this->replyConsumer =
+                function(\Bunny\Message $message, \Bunny\Channel $channel) use (&$reply) {
+                    $reply = $this->getContainer()->build(Message::class, ['bunnyMessage' => $message]);
+                    $this->client->stop(); // stop receiving on first reply
+                };
+            $this->client->consume($this->replyConsumer, 'amq.rabbitmq.reply-to', '', false, true);
+        }
+
+        $message['reply-to'] = 'amq.rabbitmq.reply-to';
+        $this->publish($message, $exchange, $rkey);
+
+        $this->client->run($timeout);
+
+        if ($reply) return $reply;
+        else return null;
     }
 
     /**
@@ -674,13 +696,13 @@ class Channel
         if ($this->returnFrame) {
             $content = $this->bodyBuffer->consume($this->bodyBuffer->getLength());
             $message = new Message(
-                null,
-                null,
-                false,
+                $content,
+                $this->headerFrame->toArray(),
                 $this->returnFrame->exchange,
                 $this->returnFrame->routingKey,
-                $this->headerFrame->toArray(),
-                $content
+                '',
+                null,
+                false,
             );
 
             foreach ($this->returnCallbacks as $callback) {
@@ -694,13 +716,13 @@ class Channel
             $content = $this->bodyBuffer->consume($this->bodyBuffer->getLength());
             if (isset($this->deliverCallbacks[$this->deliverFrame->consumerTag])) {
                 $message = new Message(
+                    $content,
+                    $this->headerFrame->toArray(),
+                    $this->deliverFrame->exchange,
+                    $this->deliverFrame->routingKey,
                     $this->deliverFrame->consumerTag,
                     $this->deliverFrame->deliveryTag,
                     $this->deliverFrame->redelivered,
-                    $this->deliverFrame->exchange,
-                    $this->deliverFrame->routingKey,
-                    $this->headerFrame->toArray(),
-                    $content
                 );
 
                 $callback = $this->deliverCallbacks[$this->deliverFrame->consumerTag];
@@ -718,13 +740,13 @@ class Channel
             $deferred = $this->getDeferred;
             $this->getDeferred = null;
             $deferred->resolve(new Message(
-                null,
-                $this->getOkFrame->deliveryTag,
-                $this->getOkFrame->redelivered,
+                $content,
+                $this->headerFrame->toArray(),
                 $this->getOkFrame->exchange,
                 $this->getOkFrame->routingKey,
-                $this->headerFrame->toArray(),
-                $content
+                '',
+                $this->getOkFrame->deliveryTag,
+                $this->getOkFrame->redelivered,
             ));
 
             $this->getOkFrame = null;
