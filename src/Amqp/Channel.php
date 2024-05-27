@@ -72,7 +72,7 @@ class Channel
                 exit(504);
             }
             else if (str_contains($e->getMessage(), 'Connection refused')) {
-                $log->notice('RabbitMQ is not ready.');
+                $log->notice($e->getMessage());
                 sleep(1); // docker can't
                 exit(504);
             }
