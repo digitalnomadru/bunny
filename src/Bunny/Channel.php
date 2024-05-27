@@ -22,16 +22,18 @@ use React\Promise\Deferred;
 use React\Promise\PromiseInterface;
 
 // Used to pass flags as a single parameter
-define('MQ_DURABLE',    1);
-define('MQ_EXCLUSIVE',  2);
-define('MQ_AUTODELETE', 4);
-define('MQ_PASSIVE',    8);
-define('MQ_NOWAIT',    16);
-define('MQ_INTERNAL',  32);
-define('MQ_IFUNUSED',  64);
-define('MQ_IFEMPTY',  128);
-define('MQ_NOACK',    256);
-define('MQ_NOLOCAL',  512);
+if (!defined('MQ_DURABLE')) {
+    define('MQ_DURABLE',    1);
+    define('MQ_EXCLUSIVE',  2);
+    define('MQ_AUTODELETE', 4);
+    define('MQ_PASSIVE',    8);
+    define('MQ_NOWAIT',    16);
+    define('MQ_INTERNAL',  32);
+    define('MQ_IFUNUSED',  64);
+    define('MQ_IFEMPTY',  128);
+    define('MQ_NOACK',    256);
+    define('MQ_NOLOCAL',  512);
+}
 
 /**
  * AMQP channel.

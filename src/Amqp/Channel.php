@@ -85,26 +85,13 @@ class Channel
         }
         catch (ClientException $e) {
             if (strpos($e->getMessage(), 'Connection refused')) {
-                $self->getLogger()->debug($e->getMessage()); // no stacktrace
+                $log->debug($e->getMessage()); // no stacktrace
             }
             else throw $e;
         }
 
         // One message at a time transferred. Save network, message may fail.
         $self->bunny->qos(0, 1, true);
-
-        // rebbitmq-email defines it only on received mail, but we want to bind now.
-        // store emails to reference if needed
-        $self->client->exchangeDeclare($self->id, 'mail', 'topic', false, true);
-        $self->queueDeclare('mail-inbox');
-        $self->bind('mail-inbox', 'mail', [], '#');
-
-        // standart exchanges with x-delay plugin
-        foreach (['direct', 'fanout', 'headers', 'topic'] as $type) {
-            $self->client->exchangeDeclare($self->id, "delay.$type", 'x-delayed-message', false, true, false, false, false, [
-                'x-delayed-type' => $type
-            ]);
-        }
 
         $exchanges = @$container->get('config')['rabbitmq']['exchanges'] ?: [];
         foreach ($exchanges as $args) $self->exchangeDeclare(...$args);
