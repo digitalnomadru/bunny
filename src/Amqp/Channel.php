@@ -93,7 +93,7 @@ class Channel
         // One message at a time transferred. Save network, message may fail.
         $self->bunny->qos(0, 1, true);
 
-        $exchanges = @$container->get('config')['rabbitmq']['exchanges'] ?: [];
+        $exchanges = $container->get('config')['rabbitmq']['exchanges'] ?? [];
         foreach ($exchanges as $args) $self->exchangeDeclare(...$args);
 
         return $self;
