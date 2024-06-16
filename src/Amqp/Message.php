@@ -1,6 +1,7 @@
 <?php
 namespace Amqp;
 
+use AllowDynamicProperties;
 use Psr\Http\Message\ResponseInterface;
 use Amqp\Message\Hydrator\MessageHydrator;
 use Laminas\Diactoros\ServerRequest;
@@ -13,6 +14,7 @@ use Laminas\Validator\ValidatorInterface;
  *
  * @todo implement JsonSerializable
  */
+#[AllowDynamicProperties]
 class Message extends ServerRequest implements
     \ArrayAccess,           // Quick access to headers
     ResponseInterface,      // Handler can return Message for an RPC reply.
