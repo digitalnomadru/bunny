@@ -34,6 +34,8 @@ define('MQ_NOLOCAL',  512);
  */
 class Channel
 {
+    public $replyConsumer;
+
     static public array $defaultQueueArguments = [
         'x-max-priority' => Message::PRIORITY_EMERG
     ];
