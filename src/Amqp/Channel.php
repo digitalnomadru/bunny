@@ -194,17 +194,17 @@ class Channel
      * @throws NotImplementedException
      * @return Message
      */
-    public function call(Message $message, string $exchange, string $rkey = '', int $timeout = 10) : ?Message
+    public function call(Message $message, string $exchange, string $rkey = '', int $timeout = 10) : ?\Bunny\Message
     {
         // register replies consumer once per channel (so direct reply-to knows our consumer tag)
         $reply = null;
         if (!isset($this->replyConsumer)) {
             $this->replyConsumer =
             function(\Bunny\Message $message, \Bunny\Channel $channel) use (&$reply) {
-                $reply = $this->getContainer()->build(Message::class, ['bunnyMessage' => $message]);
+                $reply = $message;
                 $this->client->stop(); // stop receiving on first reply
             };
-            $this->bunny->consume($this->replyConsumer, 'amq.rabbitmq.reply-to', '', false, true);
+            $this->bunny->consume($this->replyConsumer, 'amq.rabbitmq.reply-to', '', MQ_NOACK);
         }
 
         $message['reply-to'] = 'amq.rabbitmq.reply-to';
