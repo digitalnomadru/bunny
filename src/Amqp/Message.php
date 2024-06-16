@@ -108,7 +108,7 @@ class Message extends ServerRequest implements
         // Get object props from given argument of mixed type.
         if (is_array($body)) {
             $props = $body;
-            $body = json_encode_pretty($props);
+            $body = json_encode($props);
         } else {
             $body = (string) $body;
             $try = @json_decode($body, true);
@@ -120,7 +120,7 @@ class Message extends ServerRequest implements
         if ($props) {
             $this->getHydrator()->hydrate($props, $this);
             $props = $this->getHydrator()->extract($this); // to filter what's in body
-            $body = json_encode_pretty($body);
+            $body = json_encode($body);
         }
 
         if (property_exists($this, 'created') && empty($this->created)) {
@@ -264,7 +264,7 @@ class Message extends ServerRequest implements
 	}
 	public function toJson() : string
 	{
-	    return json_encode_pretty($this->getHydrator()->extract($this));
+	    return json_encode($this->getHydrator()->extract($this));
 	}
 
     /**
